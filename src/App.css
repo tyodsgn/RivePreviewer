@@ -94,15 +94,40 @@
 }
 
 .rive-card:hover {
-  background: var(--accent);
+  background: oklch(1 0 0 / 3%);
 }
 
 .rive-card__canvas {
   aspect-ratio: 1;
   display: flex;
-  padding: 20px;
+  padding: 32px;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.rive-card__download {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: oklch(0 0 0 / 50%);
+  color: var(--foreground);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 1;
+}
+
+.rive-card:hover .rive-card__download {
+  opacity: 1;
+}
+
+.rive-card__download:hover {
+  background: oklch(0 0 0 / 70%);
 }
 
 .rive-card__rive {
