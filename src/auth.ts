@@ -1,22 +1,42 @@
-const SESSION_KEY = 'rive_admin_session'
+import { supabase } from './lib/supabase'
+import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 
-function check(u: string, p: string): boolean {
-  const a = String.fromCharCode(97, 100, 109, 105, 110)
-  return u === a && p === a
-}
-
-export function validateLogin(username: string, password: string): boolean {
-  return check(username.trim(), password)
-}
-
-export function setAuthenticated(value: boolean): void {
-  if (value) {
-    sessionStorage.setItem(SESSION_KEY, '1')
-  } else {
-    sessionStorage.removeItem(SESSION_KEY)
+export async function signUp(
+  email: string,
+  password: string,
+): Promise<{ user: User | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  return {
+    user: data.user,
+    error: error?.message ?? null,
   }
 }
 
-export function isAuthenticated(): boolean {
-  return sessionStorage.getItem(SESSION_KEY) === '1'
+export async function signIn(
+  email: string,
+  password: string,
+): Promise<{ user: User | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  return {
+    user: data.user,
+    error: error?.message ?? null,
+  }
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut()
+}
+
+export async function getSession(): Promise<Session | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session
+}
+
+export function onAuthChange(
+  callback: (event: AuthChangeEvent, session: Session | null) => void,
+): () => void {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(callback)
+  return () => subscription.unsubscribe()
 }

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@rive-app/react-webgl2": "^4.26.2",
+    "@supabase/supabase-js": "^2.95.3",
     "geist": "^1.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

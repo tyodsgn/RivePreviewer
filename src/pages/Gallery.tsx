@@ -6,12 +6,15 @@ import { PreviewModal } from '../components/PreviewModal'
 export function Gallery() {
   const [rives, setRives] = useState<RiveRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<RiveRecord | null>(null)
 
   const loadRives = () => {
     setLoading(true)
+    setError(null)
     getAllRives()
       .then(setRives)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false))
   }
 
@@ -27,12 +30,10 @@ export function Gallery() {
     const riveId = params.get('rive')
     if (!riveId) return
 
-    // First check if it's already in the loaded list
     const found = rives.find((r) => r.id === riveId)
     if (found) {
       setPreview(found)
     } else {
-      // Fallback: fetch by id directly from IndexedDB
       getRiveById(riveId).then((record) => {
         if (record) setPreview(record)
       })
@@ -80,6 +81,23 @@ export function Gallery() {
     return (
       <div className="gallery gallery--loading">
         <p>Loading...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="gallery gallery--empty">
+        <p>Failed to load Rive files.</p>
+        <p className="gallery__hint">{error}</p>
+        <button
+          type="button"
+          className="admin__btn admin__btn--primary"
+          onClick={loadRives}
+          style={{ marginTop: '0.75rem' }}
+        >
+          Retry
+        </button>
       </div>
     )
   }

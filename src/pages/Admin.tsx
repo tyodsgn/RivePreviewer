@@ -1,15 +1,33 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAllRives, addRive, deleteRive, type RiveRecord } from '../db'
-import { validateLogin, setAuthenticated, isAuthenticated } from '../auth'
+import { signIn, signUp, signOut, getSession, onAuthChange } from '../auth'
 import { DropZone } from '../DropZone'
 
 export function Admin() {
-  const [auth, setAuth] = useState(isAuthenticated())
-  const [username, setUsername] = useState('')
+  const [auth, setAuth] = useState(false)
+  const [initializing, setInitializing] = useState(true)
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState<string | null>(null)
+  const [authMessage, setAuthMessage] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [rives, setRives] = useState<RiveRecord[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Check existing session on mount + listen for auth changes
+  useEffect(() => {
+    getSession().then((session) => {
+      setAuth(!!session)
+      setInitializing(false)
+    })
+
+    const unsubscribe = onAuthChange((_event, session) => {
+      setAuth(!!session)
+    })
+
+    return unsubscribe
+  }, [])
 
   const loadRives = useCallback(() => {
     setLoading(true)
@@ -22,27 +40,42 @@ export function Admin() {
     if (auth) loadRives()
   }, [auth, loadRives])
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setAuthError(null)
-    if (validateLogin(username, password)) {
-      setAuthenticated(true)
-      setAuth(true)
-    } else {
-      setAuthError('Invalid credentials')
+    setAuthMessage(null)
+    setSubmitting(true)
+
+    try {
+      if (mode === 'login') {
+        const { error } = await signIn(email, password)
+        if (error) setAuthError(error)
+      } else {
+        const { error } = await signUp(email, password)
+        if (error) {
+          setAuthError(error)
+        } else {
+          setAuthMessage('Check your email for a confirmation link, then log in.')
+          setMode('login')
+        }
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const handleLogout = () => {
-    setAuthenticated(false)
-    setAuth(false)
-    setUsername('')
+  const handleLogout = async () => {
+    await signOut()
+    setEmail('')
     setPassword('')
   }
 
-  const handleFileLoaded = useCallback((buffer: ArrayBuffer, name: string) => {
-    addRive(name, buffer).then(() => loadRives())
-  }, [loadRives])
+  const handleFileLoaded = useCallback(
+    (buffer: ArrayBuffer, name: string) => {
+      addRive(name, buffer).then(() => loadRives())
+    },
+    [loadRives],
+  )
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -51,33 +84,62 @@ export function Admin() {
     [loadRives],
   )
 
+  if (initializing) {
+    return (
+      <div className="admin admin--login-view">
+        <p className="admin__loading">Loading...</p>
+      </div>
+    )
+  }
+
   if (!auth) {
     return (
       <div className="admin admin--login-view">
         <div className="admin__login">
-          <h2>Admin Login</h2>
-          <form onSubmit={handleLogin}>
+          <h2>{mode === 'login' ? 'Admin Login' : 'Create Account'}</h2>
+          <form onSubmit={handleSubmit}>
             <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               className="admin__input"
+              required
             />
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               className="admin__input"
+              required
+              minLength={6}
             />
             {authError && <p className="admin__error">{authError}</p>}
-            <button type="submit" className="admin__btn admin__btn--primary">
-              Login
+            {authMessage && <p className="admin__message">{authMessage}</p>}
+            <button
+              type="submit"
+              className="admin__btn admin__btn--primary"
+              disabled={submitting}
+            >
+              {submitting ? '...' : mode === 'login' ? 'Login' : 'Sign Up'}
             </button>
           </form>
+          <button
+            type="button"
+            className="admin__toggle"
+            onClick={() => {
+              setMode(mode === 'login' ? 'signup' : 'login')
+              setAuthError(null)
+              setAuthMessage(null)
+            }}
+          >
+            {mode === 'login'
+              ? "Don't have an account? Sign up"
+              : 'Already have an account? Log in'}
+          </button>
         </div>
       </div>
     )
