@@ -70,16 +70,27 @@ export function Admin() {
     setPassword('')
   }
 
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
   const handleFileLoaded = useCallback(
     (buffer: ArrayBuffer, name: string) => {
-      addRive(name, buffer).then(() => loadRives())
+      setUploadError(null)
+      addRive(name, buffer)
+        .then(() => loadRives())
+        .catch((err) => {
+          setUploadError(err instanceof Error ? err.message : 'Upload failed')
+        })
     },
     [loadRives],
   )
 
   const handleDelete = useCallback(
     (id: string) => {
-      deleteRive(id).then(() => loadRives())
+      deleteRive(id)
+        .then(() => loadRives())
+        .catch((err) => {
+          console.error('Delete failed:', err)
+        })
     },
     [loadRives],
   )
@@ -157,6 +168,7 @@ export function Admin() {
       <section className="admin__upload">
         <h3>Upload</h3>
         <DropZone onFileLoaded={handleFileLoaded} />
+        {uploadError && <p className="admin__error" style={{ marginTop: '0.5rem' }}>{uploadError}</p>}
       </section>
 
       <section className="admin__list">
